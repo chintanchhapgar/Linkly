@@ -8,15 +8,15 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
+import ProtectedLink from './pages/ProtectedLink';  // ← NEW
 
-// ✅ Better React Query config
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 0,              // Always consider data stale
-      refetchOnWindowFocus: true, // Refetch when tab focused
-      refetchOnMount: true,       // Refetch when component mounts
-      retry: 1,                   // Retry once on error
+      staleTime: 0,
+      refetchOnWindowFocus: true,
+      refetchOnMount: true,
+      retry: 1,
     },
   },
 });
@@ -30,11 +30,22 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Toaster position="top-right" />
+        <Toaster 
+          position="top-right" 
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: '#12121a',
+              border: '1px solid #27272f',
+              color: '#fff',
+            },
+          }}
+        />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/protected/:code" element={<ProtectedLink />} />  {/* ← NEW */}
           <Route
             path="/dashboard"
             element={

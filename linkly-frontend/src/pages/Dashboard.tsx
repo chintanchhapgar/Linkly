@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Link2, Plus, Copy, Trash2, BarChart3,
   Loader2, QrCode, Zap, Edit, Power, Clock, Search,
+  Lock, Eye, EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
@@ -11,9 +12,8 @@ import { api } from '../lib/api';
 import Navbar from '../components/Navbar';
 import EditLinkModal from '../components/EditLinkModal';
 import LinkFilters from '../components/LinkFilters';
-import type { StatusFilter, SortOption } from '../components/LinkFilters';  // ← Type import
+import type { StatusFilter, SortOption } from '../components/LinkFilters';
 import { useDebounce } from '../hooks/useDebounce';
-
 
 interface LinkData {
   id: string;
@@ -24,6 +24,7 @@ interface LinkData {
   clicks: number;
   isActive: boolean;
   expiresAt?: string | null;
+  hasPassword?: boolean;
   createdAt: string;
 }
 
@@ -32,7 +33,14 @@ export default function Dashboard() {
   const queryClient = useQueryClient();
   const [showQR, setShowQR] = useState<string | null>(null);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
-  const [form, setForm] = useState({ originalUrl: '', customCode: '', title: '' });
+  const [showCreatePassword, setShowCreatePassword] = useState(false);
+  
+  const [form, setForm] = useState({
+    originalUrl: '',
+    customCode: '',
+    title: '',
+    password: '',
+  });
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -56,7 +64,7 @@ export default function Dashboard() {
       if (debouncedSearch) params.append('search', debouncedSearch);
       if (status !== 'all') params.append('status', status);
       if (sortBy !== 'newest') params.append('sortBy', sortBy);
-      
+
       return (await api.get(`/api/links?${params.toString()}`)).data;
     },
     refetchOnWindowFocus: true,
@@ -73,12 +81,13 @@ export default function Dashboard() {
       const payload: any = { originalUrl: data.originalUrl };
       if (data.customCode) payload.customCode = data.customCode;
       if (data.title) payload.title = data.title;
+      if (data.password) payload.password = data.password;
       return (await api.post('/api/links', payload)).data;
     },
     onSuccess: async () => {
       await queryClient.refetchQueries({ queryKey: ['links'] });
       await queryClient.refetchQueries({ queryKey: ['stats'] });
-      setForm({ originalUrl: '', customCode: '', title: '' });
+      setForm({ originalUrl: '', customCode: '', title: '', password: '' });
       toast.success('Link created!');
     },
     onError: (err: any) => {
@@ -121,13 +130,35 @@ export default function Dashboard() {
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           {[
-            { icon: Link2, label: 'Total Links', value: stats?.totalLinks || 0, color: 'purple' },
-            { icon: Zap, label: 'Total Clicks', value: stats?.totalClicks || 0, color: 'cyan' },
-            { icon: BarChart3, label: 'Avg Clicks/Link', value: stats?.totalLinks ? Math.round(stats.totalClicks / stats.totalLinks) : 0, color: 'pink' },
+            {
+              icon: Link2,
+              label: 'Total Links',
+              value: stats?.totalLinks || 0,
+              color: 'purple',
+            },
+            {
+              icon: Zap,
+              label: 'Total Clicks',
+              value: stats?.totalClicks || 0,
+              color: 'cyan',
+            },
+            {
+              icon: BarChart3,
+              label: 'Avg Clicks/Link',
+              value: stats?.totalLinks
+                ? Math.round(stats.totalClicks / stats.totalLinks)
+                : 0,
+              color: 'pink',
+            },
           ].map((stat, i) => (
-            <div key={i} className="bg-cyber-card border border-cyber-border p-6 rounded-xl hover:border-purple-500/30 transition">
+            <div
+              key={i}
+              className="bg-cyber-card border border-cyber-border p-6 rounded-xl hover:border-purple-500/30 transition"
+            >
               <div className="flex items-center gap-3 mb-2">
-                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 border border-${stat.color}-500/30 flex items-center justify-center`}>
+                <div
+                  className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 border border-${stat.color}-500/30 flex items-center justify-center`}
+                >
                   <stat.icon className={`w-5 h-5 text-${stat.color}-400`} />
                 </div>
                 <div className="text-sm text-slate-400">{stat.label}</div>
@@ -174,12 +205,38 @@ export default function Dashboard() {
                 className="px-4 py-2.5 bg-cyber-bg border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
               />
             </div>
+            {/* Password Protection (Optional) */}
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                type={showCreatePassword ? 'text' : 'password'}
+                placeholder="Password protection (optional)"
+                value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })}
+                className="w-full pl-10 pr-11 py-2.5 bg-cyber-bg border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
+              />
+              {form.password && (
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePassword(!showCreatePassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                >
+                  {showCreatePassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              )}
+            </div>
             <button
               type="submit"
               disabled={createMutation.isPending}
               className="w-full py-3 bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition btn-glow"
             >
-              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {createMutation.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
               Shorten URL
             </button>
           </form>
@@ -254,6 +311,12 @@ export default function Dashboard() {
                           <span className="px-2 py-0.5 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs rounded font-medium flex items-center gap-1">
                             <Clock className="w-3 h-3" />
                             Expired
+                          </span>
+                        )}
+                        {link.hasPassword && (
+                          <span className="px-2 py-0.5 bg-purple-500/20 border border-purple-500/30 text-purple-400 text-xs rounded font-medium flex items-center gap-1">
+                            <Lock className="w-3 h-3" />
+                            Protected
                           </span>
                         )}
                       </div>
@@ -358,10 +421,13 @@ export default function Dashboard() {
 // Highlight matching text in search results
 function highlightMatch(text: string, search: string): JSX.Element | string {
   if (!search || !text) return text;
-  
-  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+
+  const regex = new RegExp(
+    `(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`,
+    'gi'
+  );
   const parts = text.split(regex);
-  
+
   return (
     <>
       {parts.map((part, i) =>

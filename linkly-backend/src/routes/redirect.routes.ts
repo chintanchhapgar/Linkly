@@ -11,9 +11,8 @@ router.get('/:code', async (req, res) => {
   try {
     const { code } = req.params;
     
-    console.log(`🔗 Redirect request for code: ${code}`);
+    console.log(`🔗 Redirect request for: ${code}`);
 
-    // Skip reserved routes
     const reserved = ['api', 'health', 'favicon.ico'];
     if (reserved.includes(code)) {
       return res.status(404).send('Not found');
@@ -23,8 +22,8 @@ router.get('/:code', async (req, res) => {
     let linkId: string | null = null;
     let isActive: boolean = true;
     let expiresAt: Date | null = null;
+    let hasPassword: boolean = false;
 
-    // Try to get from cache
     const cachedData = await redis.get(`link:${code}`);
     
     if (cachedData) {
@@ -32,24 +31,20 @@ router.get('/:code', async (req, res) => {
         const parsed = JSON.parse(cachedData);
         originalUrl = parsed.url;
         linkId = parsed.id;
-        isActive = parsed.isActive !== false; // default true
+        isActive = parsed.isActive !== false;
         expiresAt = parsed.expiresAt ? new Date(parsed.expiresAt) : null;
-        console.log(`⚡ Cache hit for ${code}`);
+        hasPassword = parsed.hasPassword === true;
       } catch {
         originalUrl = null;
       }
     }
 
-    // Cache miss or invalid - hit database
     if (!originalUrl || !linkId) {
-      console.log(`📀 Cache miss - checking database for ${code}`);
-      
       const link = await prisma.link.findUnique({
         where: { shortCode: code },
       });
 
       if (!link) {
-        console.log(`❌ Link not found: ${code}`);
         return res.status(404).send(renderErrorPage('Link not found', 'This short link does not exist.'));
       }
 
@@ -57,8 +52,8 @@ router.get('/:code', async (req, res) => {
       linkId = link.id;
       isActive = link.isActive;
       expiresAt = link.expiresAt;
+      hasPassword = !!link.password;
 
-      // Cache with full status info
       await redis.setex(
         `link:${code}`,
         3600,
@@ -67,34 +62,36 @@ router.get('/:code', async (req, res) => {
           id: linkId,
           isActive,
           expiresAt: expiresAt?.toISOString() || null,
+          hasPassword,
         })
       );
     }
 
-    // Check if disabled
+    // Check disabled
     if (!isActive) {
-      console.log(`🚫 Link is disabled: ${code}`);
       return res.status(410).send(renderErrorPage('Link Disabled', 'This link has been disabled by the owner.'));
     }
 
-    // Check if expired
+    // Check expired
     if (expiresAt && expiresAt < new Date()) {
-      console.log(`⏰ Link expired: ${code}`);
       return res.status(410).send(renderErrorPage('Link Expired', 'This link has expired and is no longer active.'));
+    }
+
+    // ✨ Check password protection
+    if (hasPassword) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}/protected/${code}`);
     }
 
     // Track click
     if (linkId) {
       trackClick(linkId, req).catch(console.error);
-      console.log(`✅ Click tracked for linkId: ${linkId}`);
     }
 
-    // Redirect
-    console.log(`➡️ Redirecting to: ${originalUrl}`);
     return res.redirect(302, originalUrl);
   } catch (error) {
     console.error('❌ Redirect error:', error);
-    return res.status(500).send(renderErrorPage('Error', 'Something went wrong. Please try again.'));
+    return res.status(500).send(renderErrorPage('Error', 'Something went wrong.'));
   }
 });
 
@@ -136,7 +133,6 @@ async function trackClick(linkId: string, req: any) {
   }
 }
 
-// Simple error page HTML
 function renderErrorPage(title: string, message: string): string {
   return `
 <!DOCTYPE html>
@@ -170,23 +166,15 @@ function renderErrorPage(title: string, message: string): string {
       padding: 3rem 2rem;
       box-shadow: 0 20px 60px rgba(168, 85, 247, 0.1);
     }
-    .icon {
-      font-size: 4rem;
-      margin-bottom: 1rem;
-    }
+    .icon { font-size: 4rem; margin-bottom: 1rem; }
     h1 {
       font-size: 2rem;
       margin-bottom: 1rem;
       background: linear-gradient(135deg, #a855f7 0%, #06b6d4 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      background-clip: text;
     }
-    p {
-      color: #a1a1aa;
-      margin-bottom: 2rem;
-      line-height: 1.6;
-    }
+    p { color: #a1a1aa; margin-bottom: 2rem; line-height: 1.6; }
     a {
       display: inline-block;
       padding: 0.75rem 2rem;
@@ -195,10 +183,6 @@ function renderErrorPage(title: string, message: string): string {
       text-decoration: none;
       border-radius: 8px;
       font-weight: 600;
-      transition: opacity 0.2s;
-    }
-    a:hover {
-      opacity: 0.9;
     }
   </style>
 </head>

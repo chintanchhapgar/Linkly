@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { X, Loader2, Save, Power, Link2 } from 'lucide-react';
+import { X, Loader2, Save, Power, Link2, Lock, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { api } from '../lib/api';
 
@@ -12,6 +12,7 @@ interface LinkData {
   title?: string;
   isActive: boolean;
   expiresAt?: string | null;
+  hasPassword?: boolean;
 }
 
 interface Props {
@@ -23,7 +24,6 @@ interface Props {
 function toDatetimeLocal(isoString: string | null | undefined): string {
   if (!isoString) return '';
   const date = new Date(isoString);
-  // Adjust for timezone offset
   const offset = date.getTimezoneOffset() * 60000;
   const localDate = new Date(date.getTime() - offset);
   return localDate.toISOString().slice(0, 16);
@@ -36,7 +36,7 @@ function fromDatetimeLocal(localString: string): string {
 
 export default function EditLinkModal({ link, onClose }: Props) {
   const queryClient = useQueryClient();
-  
+
   const [form, setForm] = useState({
     originalUrl: link.originalUrl,
     title: link.title || '',
@@ -46,6 +46,11 @@ export default function EditLinkModal({ link, onClose }: Props) {
 
   const [hasExpiration, setHasExpiration] = useState(!!link.expiresAt);
 
+  // Password states
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [changePassword, setChangePassword] = useState(false);
+
   const updateMutation = useMutation({
     mutationFn: async () => {
       const payload: any = {
@@ -53,11 +58,16 @@ export default function EditLinkModal({ link, onClose }: Props) {
         title: form.title || null,
         isActive: form.isActive,
       };
-      
+
       if (hasExpiration && form.expiresAt) {
         payload.expiresAt = fromDatetimeLocal(form.expiresAt);
       } else {
         payload.expiresAt = null;
+      }
+
+      // Handle password
+      if (changePassword) {
+        payload.password = password || null; // Empty = remove password
       }
 
       console.log('📤 Sending:', payload);
@@ -84,7 +94,6 @@ export default function EditLinkModal({ link, onClose }: Props) {
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  // Get minimum datetime (now)
   const now = new Date();
   const nowOffset = now.getTimezoneOffset() * 60000;
   const minDateTime = new Date(now.getTime() - nowOffset).toISOString().slice(0, 16);
@@ -137,6 +146,9 @@ export default function EditLinkModal({ link, onClose }: Props) {
               className="w-full px-4 py-2.5 bg-cyber-bg border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
               placeholder="https://example.com"
             />
+            <p className="text-xs text-slate-500 mt-1">
+              Where should the short link redirect to?
+            </p>
           </div>
 
           {/* Title */}
@@ -168,7 +180,6 @@ export default function EditLinkModal({ link, onClose }: Props) {
                     if (!e.target.checked) {
                       setForm({ ...form, expiresAt: '' });
                     } else if (!form.expiresAt) {
-                      // Default to 1 hour from now
                       const oneHourLater = new Date(Date.now() + 60 * 60 * 1000);
                       const offset = oneHourLater.getTimezoneOffset() * 60000;
                       const local = new Date(oneHourLater.getTime() - offset)
@@ -245,6 +256,77 @@ export default function EditLinkModal({ link, onClose }: Props) {
                 }`}
               />
             </button>
+          </div>
+
+          {/* Password Protection */}
+          <div className="p-4 bg-cyber-bg border border-cyber-border rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    link.hasPassword
+                      ? 'bg-purple-500/20 border border-purple-500/30'
+                      : 'bg-slate-500/10 border border-slate-500/30'
+                  }`}
+                >
+                  <Lock
+                    className={`w-5 h-5 ${
+                      link.hasPassword ? 'text-purple-400' : 'text-slate-400'
+                    }`}
+                  />
+                </div>
+                <div>
+                  <div className="font-medium">Password Protection</div>
+                  <div className="text-xs text-slate-400">
+                    {link.hasPassword ? '🔒 Currently protected' : 'No password set'}
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setChangePassword(!changePassword);
+                  if (changePassword) setPassword('');
+                }}
+                className="text-sm text-purple-400 hover:text-purple-300 font-medium"
+              >
+                {changePassword ? 'Cancel' : link.hasPassword ? 'Change' : 'Add'}
+              </button>
+            </div>
+
+            {changePassword && (
+              <div>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="w-full px-4 py-2.5 pr-11 bg-cyber-card border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
+                    placeholder={
+                      link.hasPassword
+                        ? 'Enter new password (leave empty to remove)'
+                        : 'Enter password'
+                    }
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  {link.hasPassword
+                    ? '💡 Leave empty and save to remove password'
+                    : '💡 Users will need this password to access the link'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Actions */}
