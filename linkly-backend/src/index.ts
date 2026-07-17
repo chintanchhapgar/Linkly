@@ -14,10 +14,19 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 5001;
 
-// ✅ FIXED CORS - Allow all origins in development
+// CORS - Allow frontend
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+].filter(Boolean);
+
 app.use(cors({
   origin: (origin, callback) => {
-    callback(null, true); // Allow all origins
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(null, true); // Allow all for now
+    }
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -27,26 +36,21 @@ app.use(cors({
 app.use(morgan('dev'));
 app.use(express.json());
 
-// Health check
 app.get('/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
 app.get('/', (_req, res) => {
-  res.json({ message: 'Linkly API is running!' });
+  res.json({ message: 'Linkly API is running! 🚀' });
 });
 
-// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/links', linkRoutes);
 app.use('/api/analytics', analyticsRoutes);
-
-// Redirect route (must be last)
 app.use('/', redirectRoutes);
 
-// Error handler
 app.use(errorHandler);
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
