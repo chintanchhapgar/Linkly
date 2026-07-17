@@ -70,12 +70,50 @@ router.post('/', authenticate, async (req: AuthRequest, res, next) => {
   }
 });
 
-// Get all links
+// Get all user links with search & filter
 router.get('/', authenticate, async (req: AuthRequest, res, next) => {
   try {
+    const {
+      search = '',
+      status = 'all',
+      sortBy = 'newest',
+    } = req.query as Record<string, string>;
+
+    // Build where clause
+    const where: any = { userId: req.userId };
+
+    // Search filter
+    if (search) {
+      where.OR = [
+        { title: { contains: search, mode: 'insensitive' } },
+        { originalUrl: { contains: search, mode: 'insensitive' } },
+        { shortCode: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    // Status filter
+    const now = new Date();
+    if (status === 'active') {
+      where.isActive = true;
+      where.OR = [
+        { expiresAt: null },
+        { expiresAt: { gt: now } },
+      ];
+    } else if (status === 'disabled') {
+      where.isActive = false;
+    } else if (status === 'expired') {
+      where.expiresAt = { lt: now };
+    }
+
+    // Sort options
+    let orderBy: any = { createdAt: 'desc' };
+    if (sortBy === 'oldest') orderBy = { createdAt: 'asc' };
+    else if (sortBy === 'clicks') orderBy = { clicks: 'desc' };
+    else if (sortBy === 'alphabetical') orderBy = { title: 'asc' };
+
     const links = await prisma.link.findMany({
-      where: { userId: req.userId },
-      orderBy: { createdAt: 'desc' },
+      where,
+      orderBy,
     });
 
     res.json(

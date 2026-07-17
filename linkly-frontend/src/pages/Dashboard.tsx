@@ -3,13 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Link2, Plus, Copy, Trash2, BarChart3,
-  Loader2, QrCode, Zap, Edit, Power, Clock,
+  Loader2, QrCode, Zap, Edit, Power, Clock, Search,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { api } from '../lib/api';
 import Navbar from '../components/Navbar';
 import EditLinkModal from '../components/EditLinkModal';
+import LinkFilters from '../components/LinkFilters';
+import type { StatusFilter, SortOption } from '../components/LinkFilters';  // ← Type import
+import { useDebounce } from '../hooks/useDebounce';
+
 
 interface LinkData {
   id: string;
@@ -30,9 +34,31 @@ export default function Dashboard() {
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
   const [form, setForm] = useState({ originalUrl: '', customCode: '', title: '' });
 
-  const { data: links = [], isLoading } = useQuery<LinkData[]>({
-    queryKey: ['links'],
+  // Search & Filter state
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState<StatusFilter>('all');
+  const [sortBy, setSortBy] = useState<SortOption>('newest');
+
+  const debouncedSearch = useDebounce(search, 400);
+
+  // Fetch all links (unfiltered) - for total count
+  const { data: allLinks = [] } = useQuery<LinkData[]>({
+    queryKey: ['links', 'all'],
     queryFn: async () => (await api.get('/api/links')).data,
+    refetchOnWindowFocus: true,
+  });
+
+  // Fetch filtered links
+  const { data: links = [], isLoading } = useQuery<LinkData[]>({
+    queryKey: ['links', debouncedSearch, status, sortBy],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.append('search', debouncedSearch);
+      if (status !== 'all') params.append('status', status);
+      if (sortBy !== 'newest') params.append('sortBy', sortBy);
+      
+      return (await api.get(`/api/links?${params.toString()}`)).data;
+    },
     refetchOnWindowFocus: true,
   });
 
@@ -42,34 +68,32 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
   });
 
-    const createMutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: async (data: typeof form) => {
-        const payload: any = { originalUrl: data.originalUrl };
-        if (data.customCode) payload.customCode = data.customCode;
-        if (data.title) payload.title = data.title;
-        return (await api.post('/api/links', payload)).data;
+      const payload: any = { originalUrl: data.originalUrl };
+      if (data.customCode) payload.customCode = data.customCode;
+      if (data.title) payload.title = data.title;
+      return (await api.post('/api/links', payload)).data;
     },
     onSuccess: async () => {
-        // ✅ Force refetch
-        await queryClient.refetchQueries({ queryKey: ['links'] });
-        await queryClient.refetchQueries({ queryKey: ['stats'] });
-        setForm({ originalUrl: '', customCode: '', title: '' });
-        toast.success('Link created!');
+      await queryClient.refetchQueries({ queryKey: ['links'] });
+      await queryClient.refetchQueries({ queryKey: ['stats'] });
+      setForm({ originalUrl: '', customCode: '', title: '' });
+      toast.success('Link created!');
     },
     onError: (err: any) => {
-        toast.error(err.response?.data?.error || 'Failed to create link');
+      toast.error(err.response?.data?.error || 'Failed to create link');
     },
-    });
+  });
 
-    const deleteMutation = useMutation({
+  const deleteMutation = useMutation({
     mutationFn: async (id: string) => await api.delete(`/api/links/${id}`),
     onSuccess: async () => {
-        // ✅ Force refetch
-        await queryClient.refetchQueries({ queryKey: ['links'] });
-        await queryClient.refetchQueries({ queryKey: ['stats'] });
-        toast.success('Link deleted');
+      await queryClient.refetchQueries({ queryKey: ['links'] });
+      await queryClient.refetchQueries({ queryKey: ['stats'] });
+      toast.success('Link deleted');
     },
-    });
+  });
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -79,6 +103,8 @@ export default function Dashboard() {
   const isExpired = (link: LinkData) => {
     return link.expiresAt && new Date(link.expiresAt) < new Date();
   };
+
+  const hasActiveFilters = search !== '' || status !== 'all' || sortBy !== 'newest';
 
   return (
     <div className="min-h-screen bg-cyber-bg text-white relative">
@@ -159,11 +185,27 @@ export default function Dashboard() {
           </form>
         </div>
 
+        {/* Search & Filters */}
+        <LinkFilters
+          search={search}
+          onSearchChange={setSearch}
+          status={status}
+          onStatusChange={setStatus}
+          sortBy={sortBy}
+          onSortChange={setSortBy}
+          totalCount={allLinks.length}
+          filteredCount={links.length}
+        />
+
         {/* Links List */}
         <div className="bg-cyber-card border border-cyber-border rounded-xl">
           <div className="p-6 border-b border-cyber-border flex items-center justify-between">
-            <h2 className="text-lg font-bold">Your Links</h2>
-            <div className="text-sm text-slate-400">{links.length} total</div>
+            <h2 className="text-lg font-bold">
+              {hasActiveFilters ? 'Filtered Results' : 'Your Links'}
+            </h2>
+            <div className="text-sm text-slate-400">
+              {links.length} {links.length === 1 ? 'link' : 'links'}
+            </div>
           </div>
 
           {isLoading ? (
@@ -172,8 +214,18 @@ export default function Dashboard() {
             </div>
           ) : links.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
-              <Link2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
-              <p>No links yet. Create your first short link above!</p>
+              {hasActiveFilters ? (
+                <>
+                  <Search className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium text-white">No matches found</p>
+                  <p className="text-sm mt-1">Try adjusting your filters</p>
+                </>
+              ) : (
+                <>
+                  <Link2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                  <p>No links yet. Create your first short link above!</p>
+                </>
+              )}
             </div>
           ) : (
             <div className="divide-y divide-cyber-border">
@@ -189,7 +241,7 @@ export default function Dashboard() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {link.title && (
                           <div className="font-medium text-white truncate">
-                            {link.title}
+                            {highlightMatch(link.title, debouncedSearch)}
                           </div>
                         )}
                         {!link.isActive && (
@@ -223,7 +275,7 @@ export default function Dashboard() {
                         </button>
                       </div>
                       <div className="text-sm text-slate-500 truncate mt-0.5">
-                        → {link.originalUrl}
+                        → {highlightMatch(link.originalUrl, debouncedSearch)}
                       </div>
                       {link.expiresAt && (
                         <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
@@ -293,7 +345,6 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Edit Modal */}
       {editingLink && (
         <EditLinkModal
           link={editingLink}
@@ -301,5 +352,30 @@ export default function Dashboard() {
         />
       )}
     </div>
+  );
+}
+
+// Highlight matching text in search results
+function highlightMatch(text: string, search: string): JSX.Element | string {
+  if (!search || !text) return text;
+  
+  const regex = new RegExp(`(${search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+  const parts = text.split(regex);
+  
+  return (
+    <>
+      {parts.map((part, i) =>
+        regex.test(part) ? (
+          <mark
+            key={i}
+            className="bg-purple-500/30 text-purple-200 px-0.5 rounded"
+          >
+            {part}
+          </mark>
+        ) : (
+          part
+        )
+      )}
+    </>
   );
 }
