@@ -7,6 +7,7 @@ import authRoutes from './routes/auth.routes';
 import linkRoutes from './routes/link.routes';
 import analyticsRoutes from './routes/analytics.routes';
 import redirectRoutes from './routes/redirect.routes';
+import userRoutes from './routes/user.routes';  // ← NEW
 import { errorHandler } from './middleware/error.middleware';
 
 dotenv.config();
@@ -14,19 +15,9 @@ dotenv.config();
 const app = express();
 const PORT = Number(process.env.PORT) || 5001;
 
-// CORS - Allow frontend
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  'http://localhost:5173',
-].filter(Boolean);
-
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(null, true); // Allow all for now
-    }
+    callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -44,9 +35,13 @@ app.get('/', (_req, res) => {
   res.json({ message: 'Linkly API is running! 🚀' });
 });
 
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/links', linkRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/user', userRoutes);  // ← NEW
+
+// Redirect route (MUST be last)
 app.use('/', redirectRoutes);
 
 app.use(errorHandler);

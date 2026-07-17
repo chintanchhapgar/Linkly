@@ -8,7 +8,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
-import ProtectedLink from './pages/ProtectedLink';  // ← NEW
+import ProtectedLink from './pages/ProtectedLink';
+import ProfilePage from './pages/Profile';  // ← NEW
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -45,7 +46,7 @@ export default function App() {
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
-          <Route path="/protected/:code" element={<ProtectedLink />} />  {/* ← NEW */}
+          <Route path="/protected/:code" element={<ProtectedLink />} />
           <Route
             path="/dashboard"
             element={
@@ -59,6 +60,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Analytics />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <PrivateRoute>
+                <ProfilePage />
               </PrivateRoute>
             }
           />
