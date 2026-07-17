@@ -1,0 +1,22 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:16
+    container_name: linkly-postgres
+    environment:
+      POSTGRES_USER: linkly_user
+      POSTGRES_PASSWORD: linkly_pass
+      POSTGRES_DB: linkly
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7-alpine
+    container_name: linkly-redis
+    ports:
+      - '6380:6379'   
+
+volumes:
+  postgres_data:

@@ -1,0 +1,52 @@
+import express from 'express';
+import cors from 'cors';
+import morgan from 'morgan';
+import dotenv from 'dotenv';
+
+import authRoutes from './routes/auth.routes';
+import linkRoutes from './routes/link.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import redirectRoutes from './routes/redirect.routes';
+import { errorHandler } from './middleware/error.middleware';
+
+dotenv.config();
+
+const app = express();
+const PORT = Number(process.env.PORT) || 5001;
+
+// ✅ FIXED CORS - Allow all origins in development
+app.use(cors({
+  origin: (origin, callback) => {
+    callback(null, true); // Allow all origins
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+app.use(morgan('dev'));
+app.use(express.json());
+
+// Health check
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+app.get('/', (_req, res) => {
+  res.json({ message: 'Linkly API is running!' });
+});
+
+// API Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/links', linkRoutes);
+app.use('/api/analytics', analyticsRoutes);
+
+// Redirect route (must be last)
+app.use('/', redirectRoutes);
+
+// Error handler
+app.use(errorHandler);
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
+});

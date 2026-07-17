@@ -1,0 +1,257 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import {
+  Link2, Plus, Copy, Trash2, BarChart3,
+  ExternalLink, Loader2, QrCode, Zap,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { QRCodeSVG } from 'qrcode.react';
+import { api } from '../lib/api';
+import Navbar from '../components/Navbar';
+
+interface LinkData {
+  id: string;
+  shortCode: string;
+  shortUrl: string;
+  originalUrl: string;
+  title?: string;
+  clicks: number;
+  createdAt: string;
+}
+
+export default function Dashboard() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [showQR, setShowQR] = useState<string | null>(null);
+  const [form, setForm] = useState({ originalUrl: '', customCode: '', title: '' });
+
+  const { data: links = [], isLoading } = useQuery<LinkData[]>({
+    queryKey: ['links'],
+    queryFn: async () => (await api.get('/api/links')).data,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['stats'],
+    queryFn: async () => (await api.get('/api/analytics')).data,
+    refetchOnWindowFocus: true,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: typeof form) => {
+      const payload: any = { originalUrl: data.originalUrl };
+      if (data.customCode) payload.customCode = data.customCode;
+      if (data.title) payload.title = data.title;
+      return (await api.post('/api/links', payload)).data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['links'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      setForm({ originalUrl: '', customCode: '', title: '' });
+      toast.success('Link created!');
+    },
+    onError: (err: any) => {
+      toast.error(err.response?.data?.error || 'Failed to create link');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => await api.delete(`/api/links/${id}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['links'] });
+      queryClient.invalidateQueries({ queryKey: ['stats'] });
+      toast.success('Link deleted');
+    },
+  });
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
+  return (
+    <div className="min-h-screen bg-cyber-bg text-white relative">
+      <div className="absolute inset-0 grid-bg opacity-30 pointer-events-none"></div>
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-6 py-8 relative">
+        {/* Header */}
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold">
+            Dashboard
+          </h1>
+          <p className="text-slate-400 mt-1">Manage your shortened links</p>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          {[
+            { icon: Link2, label: 'Total Links', value: stats?.totalLinks || 0, color: 'purple' },
+            { icon: Zap, label: 'Total Clicks', value: stats?.totalClicks || 0, color: 'cyan' },
+            { icon: BarChart3, label: 'Avg Clicks/Link', value: stats?.totalLinks ? Math.round(stats.totalClicks / stats.totalLinks) : 0, color: 'pink' },
+          ].map((stat, i) => (
+            <div key={i} className="bg-cyber-card border border-cyber-border p-6 rounded-xl hover:border-purple-500/30 transition">
+              <div className="flex items-center gap-3 mb-2">
+                <div className={`w-10 h-10 rounded-lg bg-${stat.color}-500/10 border border-${stat.color}-500/30 flex items-center justify-center`}>
+                  <stat.icon className={`w-5 h-5 text-${stat.color}-400`} />
+                </div>
+                <div className="text-sm text-slate-400">{stat.label}</div>
+              </div>
+              <div className="text-4xl font-bold gradient-text">{stat.value}</div>
+            </div>
+          ))}
+        </div>
+
+        {/* Create Link Form */}
+        <div className="bg-cyber-card border border-cyber-border p-6 rounded-xl mb-8">
+          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
+            <Plus className="w-5 h-5 text-purple-400" />
+            Create Short Link
+          </h2>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              createMutation.mutate(form);
+            }}
+            className="space-y-3"
+          >
+            <input
+              type="url"
+              required
+              placeholder="Paste your long URL here..."
+              value={form.originalUrl}
+              onChange={(e) => setForm({ ...form, originalUrl: e.target.value })}
+              className="w-full px-4 py-3 bg-cyber-bg border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
+            />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <input
+                type="text"
+                placeholder="Custom slug (optional)"
+                value={form.customCode}
+                onChange={(e) => setForm({ ...form, customCode: e.target.value })}
+                className="px-4 py-2.5 bg-cyber-bg border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
+              />
+              <input
+                type="text"
+                placeholder="Title (optional)"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                className="px-4 py-2.5 bg-cyber-bg border border-cyber-border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-white placeholder-slate-500"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={createMutation.isPending}
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition btn-glow"
+            >
+              {createMutation.isPending && (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              )}
+              Shorten URL
+            </button>
+          </form>
+        </div>
+
+        {/* Links List */}
+        <div className="bg-cyber-card border border-cyber-border rounded-xl">
+          <div className="p-6 border-b border-cyber-border">
+            <h2 className="text-lg font-bold">Your Links</h2>
+          </div>
+
+          {isLoading ? (
+            <div className="p-12 text-center">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-400 mx-auto" />
+            </div>
+          ) : links.length === 0 ? (
+            <div className="p-12 text-center text-slate-500">
+              <Link2 className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p>No links yet. Create your first short link above!</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-cyber-border">
+              {links.map((link) => (
+                <div key={link.id} className="p-4 hover:bg-cyber-hover transition">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      {link.title && (
+                        <div className="font-medium text-white truncate">
+                          {link.title}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 mt-1">
+                        <a
+                          href={link.shortUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-cyan-400 font-medium hover:text-cyan-300 font-mono"
+                        >
+                          {link.shortUrl}
+                        </a>
+                        <button
+                          onClick={() => copyToClipboard(link.shortUrl)}
+                          className="text-slate-500 hover:text-purple-400 transition"
+                          title="Copy"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </button>
+                      </div>
+                      <div className="text-sm text-slate-500 truncate mt-0.5">
+                        → {link.originalUrl}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-center px-4">
+                        <div className="text-2xl font-bold gradient-text">
+                          {link.clicks}
+                        </div>
+                        <div className="text-xs text-slate-500">clicks</div>
+                      </div>
+
+                      <button
+                        onClick={() =>
+                          setShowQR(showQR === link.id ? null : link.id)
+                        }
+                        className="p-2 text-slate-400 hover:text-purple-400 hover:bg-cyber-hover rounded-lg transition"
+                        title="QR Code"
+                      >
+                        <QrCode className="w-5 h-5" />
+                      </button>
+
+                      <button
+                        onClick={() => navigate(`/analytics/${link.id}`)}
+                        className="p-2 text-slate-400 hover:text-cyan-400 hover:bg-cyber-hover rounded-lg transition"
+                        title="Analytics"
+                      >
+                        <BarChart3 className="w-5 h-5" />
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          if (confirm('Delete this link?')) {
+                            deleteMutation.mutate(link.id);
+                          }
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {showQR === link.id && (
+                    <div className="mt-4 p-4 bg-white rounded-lg flex justify-center">
+                      <QRCodeSVG value={link.shortUrl} size={180} />
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
