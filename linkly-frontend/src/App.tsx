@@ -9,7 +9,17 @@ import Register from './pages/Register';
 import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 
-const queryClient = new QueryClient();
+// ✅ Better React Query config
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 0,              // Always consider data stale
+      refetchOnWindowFocus: true, // Refetch when tab focused
+      refetchOnMount: true,       // Refetch when component mounts
+      retry: 1,                   // Retry once on error
+    },
+  },
+});
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const { token } = useAuth();

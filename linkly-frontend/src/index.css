@@ -63,3 +63,43 @@ body {
 .btn-glow:hover {
   box-shadow: 0 0 30px rgba(168, 85, 247, 0.7);
 }
+
+/* Modal animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* Custom checkbox */
+input[type="checkbox"] {
+  accent-color: #a855f7;
+}
+
+/* Datetime input styling */
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(1) opacity(0.5);
+  cursor: pointer;
+}
+
+input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover {
+  opacity: 0.8;
+}

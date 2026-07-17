@@ -3,12 +3,13 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Link2, Plus, Copy, Trash2, BarChart3,
-  ExternalLink, Loader2, QrCode, Zap,
+  Loader2, QrCode, Zap, Edit, Power, Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { QRCodeSVG } from 'qrcode.react';
 import { api } from '../lib/api';
 import Navbar from '../components/Navbar';
+import EditLinkModal from '../components/EditLinkModal';
 
 interface LinkData {
   id: string;
@@ -17,6 +18,8 @@ interface LinkData {
   originalUrl: string;
   title?: string;
   clicks: number;
+  isActive: boolean;
+  expiresAt?: string | null;
   createdAt: string;
 }
 
@@ -24,6 +27,7 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showQR, setShowQR] = useState<string | null>(null);
+  const [editingLink, setEditingLink] = useState<LinkData | null>(null);
   const [form, setForm] = useState({ originalUrl: '', customCode: '', title: '' });
 
   const { data: links = [], isLoading } = useQuery<LinkData[]>({
@@ -38,36 +42,42 @@ export default function Dashboard() {
     refetchOnWindowFocus: true,
   });
 
-  const createMutation = useMutation({
+    const createMutation = useMutation({
     mutationFn: async (data: typeof form) => {
-      const payload: any = { originalUrl: data.originalUrl };
-      if (data.customCode) payload.customCode = data.customCode;
-      if (data.title) payload.title = data.title;
-      return (await api.post('/api/links', payload)).data;
+        const payload: any = { originalUrl: data.originalUrl };
+        if (data.customCode) payload.customCode = data.customCode;
+        if (data.title) payload.title = data.title;
+        return (await api.post('/api/links', payload)).data;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['links'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      setForm({ originalUrl: '', customCode: '', title: '' });
-      toast.success('Link created!');
+    onSuccess: async () => {
+        // ✅ Force refetch
+        await queryClient.refetchQueries({ queryKey: ['links'] });
+        await queryClient.refetchQueries({ queryKey: ['stats'] });
+        setForm({ originalUrl: '', customCode: '', title: '' });
+        toast.success('Link created!');
     },
     onError: (err: any) => {
-      toast.error(err.response?.data?.error || 'Failed to create link');
+        toast.error(err.response?.data?.error || 'Failed to create link');
     },
-  });
+    });
 
-  const deleteMutation = useMutation({
+    const deleteMutation = useMutation({
     mutationFn: async (id: string) => await api.delete(`/api/links/${id}`),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['links'] });
-      queryClient.invalidateQueries({ queryKey: ['stats'] });
-      toast.success('Link deleted');
+    onSuccess: async () => {
+        // ✅ Force refetch
+        await queryClient.refetchQueries({ queryKey: ['links'] });
+        await queryClient.refetchQueries({ queryKey: ['stats'] });
+        toast.success('Link deleted');
     },
-  });
+    });
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
     toast.success('Copied to clipboard!');
+  };
+
+  const isExpired = (link: LinkData) => {
+    return link.expiresAt && new Date(link.expiresAt) < new Date();
   };
 
   return (
@@ -78,9 +88,7 @@ export default function Dashboard() {
       <div className="max-w-7xl mx-auto px-6 py-8 relative">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-4xl font-bold">
-            Dashboard
-          </h1>
+          <h1 className="text-4xl font-bold">Dashboard</h1>
           <p className="text-slate-400 mt-1">Manage your shortened links</p>
         </div>
 
@@ -145,9 +153,7 @@ export default function Dashboard() {
               disabled={createMutation.isPending}
               className="w-full py-3 bg-gradient-to-r from-purple-600 to-cyan-500 text-white rounded-lg font-semibold hover:opacity-90 disabled:opacity-50 flex items-center justify-center gap-2 transition btn-glow"
             >
-              {createMutation.isPending && (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              )}
+              {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
               Shorten URL
             </button>
           </form>
@@ -155,8 +161,9 @@ export default function Dashboard() {
 
         {/* Links List */}
         <div className="bg-cyber-card border border-cyber-border rounded-xl">
-          <div className="p-6 border-b border-cyber-border">
+          <div className="p-6 border-b border-cyber-border flex items-center justify-between">
             <h2 className="text-lg font-bold">Your Links</h2>
+            <div className="text-sm text-slate-400">{links.length} total</div>
           </div>
 
           {isLoading ? (
@@ -171,14 +178,33 @@ export default function Dashboard() {
           ) : (
             <div className="divide-y divide-cyber-border">
               {links.map((link) => (
-                <div key={link.id} className="p-4 hover:bg-cyber-hover transition">
+                <div
+                  key={link.id}
+                  className={`p-4 hover:bg-cyber-hover transition ${
+                    !link.isActive || isExpired(link) ? 'opacity-60' : ''
+                  }`}
+                >
                   <div className="flex items-center justify-between gap-4">
                     <div className="flex-1 min-w-0">
-                      {link.title && (
-                        <div className="font-medium text-white truncate">
-                          {link.title}
-                        </div>
-                      )}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {link.title && (
+                          <div className="font-medium text-white truncate">
+                            {link.title}
+                          </div>
+                        )}
+                        {!link.isActive && (
+                          <span className="px-2 py-0.5 bg-red-500/20 border border-red-500/30 text-red-400 text-xs rounded font-medium flex items-center gap-1">
+                            <Power className="w-3 h-3" />
+                            Disabled
+                          </span>
+                        )}
+                        {isExpired(link) && (
+                          <span className="px-2 py-0.5 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-xs rounded font-medium flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            Expired
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-2 mt-1">
                         <a
                           href={link.shortUrl}
@@ -199,15 +225,29 @@ export default function Dashboard() {
                       <div className="text-sm text-slate-500 truncate mt-0.5">
                         → {link.originalUrl}
                       </div>
+                      {link.expiresAt && (
+                        <div className="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                          <Clock className="w-3 h-3" />
+                          Expires: {new Date(link.expiresAt).toLocaleString()}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className="text-center px-4">
                         <div className="text-2xl font-bold gradient-text">
                           {link.clicks}
                         </div>
                         <div className="text-xs text-slate-500">clicks</div>
                       </div>
+
+                      <button
+                        onClick={() => setEditingLink(link)}
+                        className="p-2 text-slate-400 hover:text-yellow-400 hover:bg-cyber-hover rounded-lg transition"
+                        title="Edit"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
 
                       <button
                         onClick={() =>
@@ -252,6 +292,14 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {/* Edit Modal */}
+      {editingLink && (
+        <EditLinkModal
+          link={editingLink}
+          onClose={() => setEditingLink(null)}
+        />
+      )}
     </div>
   );
 }
