@@ -74,13 +74,37 @@ export default function Landing() {
               <div className="w-3 h-3 rounded-full bg-red-500"></div>
               <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
               <div className="w-3 h-3 rounded-full bg-green-500"></div>
-              <span className="ml-2 text-xs text-slate-400 font-mono">linkly.dev</span>
+              <span className="ml-2 text-xs text-slate-400 font-mono">Terminal — API Example</span>
             </div>
-            <div className="p-6 font-mono text-sm text-left">
-              <div className="text-slate-500">$ curl -X POST linkly.dev/api/shorten</div>
-              <div className="text-slate-500 pl-2">-d '{`{ "url": "https://verylongurl.com/..." }`}'</div>
-              <div className="mt-3 text-cyan-400">→ https://linkly.dev/<span className="text-purple-400">x7Kp2m</span></div>
-              <div className="mt-2 text-green-400">✓ Shortened in 23ms</div>
+            <div className="p-6 font-mono text-sm text-left space-y-2">
+              {/* Request */}
+              <div>
+                <span className="text-green-400">$</span>{' '}
+                <span className="text-white">curl</span>{' '}
+                <span className="text-cyan-400">-X POST</span>
+              </div>
+              <div className="pl-4 text-yellow-300">
+                https://linkly-api-313v.onrender.com/api/public/shorten
+              </div>
+              <div className="pl-4 text-slate-400">
+                <span className="text-cyan-400">-H</span>{' '}
+                <span className="text-yellow-300">"x-api-key: lk_live_..."</span>
+              </div>
+              <div className="pl-4 text-slate-400">
+                <span className="text-cyan-400">-d</span>{' '}
+                <span className="text-yellow-300">'{`{"url": "https://google.com"}`}'</span>
+              </div>
+
+              {/* Response */}
+              <div className="mt-4 pl-2 border-l-2 border-purple-500/50">
+                <div className="text-cyan-400">
+                  → <span className="text-white">https://linkly-mu.vercel.app/</span>
+                  <span className="text-purple-400 font-bold">google</span>
+                </div>
+                <div className="text-green-400 mt-1">
+                  ✓ Created in <span className="font-bold">23ms</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
