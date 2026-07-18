@@ -14,6 +14,7 @@ import EditLinkModal from '../components/EditLinkModal';
 import LinkFilters from '../components/LinkFilters';
 import type { StatusFilter, SortOption } from '../components/LinkFilters';
 import { useDebounce } from '../hooks/useDebounce';
+import { Sparkles } from 'lucide-react'; // Add Sparkles
 
 interface LinkData {
   id: string;
@@ -41,6 +42,30 @@ export default function Dashboard() {
     title: '',
     password: '',
   });
+
+  const [isAiLoading, setIsAiLoading] = useState(false);
+
+const handleAiMagic = async () => {
+  if (!form.originalUrl) {
+    toast.error("Paste a URL first!");
+    return;
+  }
+
+  setIsAiLoading(true);
+  try {
+        const { data } = await api.post('/api/ai/generate', { url: form.originalUrl });
+        setForm(prev => ({
+          ...prev,
+          title: data.title,
+          customCode: data.slug
+        }));
+        toast.success("✨ Magic worked! Fields populated.");
+      } catch (error) {
+        toast.error("AI couldn't analyze this URL.");
+      } finally {
+        setIsAiLoading(false);
+      }
+    };
 
   // Search & Filter state
   const [search, setSearch] = useState('');
@@ -170,10 +195,22 @@ export default function Dashboard() {
 
         {/* Create Link Form */}
         <div className="bg-cyber-card border border-cyber-border p-6 rounded-xl mb-8">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <Plus className="w-5 h-5 text-purple-400" />
-            Create Short Link
-          </h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <Plus className="w-5 h-5 text-purple-400" />
+              Create Short Link
+            </h2>
+            <button
+              type="button"
+              onClick={handleAiMagic}
+              disabled={isAiLoading || !form.originalUrl}
+              className="flex items-center gap-2 text-xs font-bold text-cyan-400 hover:text-cyan-300 disabled:opacity-50 transition bg-cyan-400/10 px-3 py-1.5 rounded-full border border-cyan-400/20"
+            >
+              {isAiLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
+              AI MAGIC
+            </button>
+          </div>
+          
           <form
             onSubmit={(e) => {
               e.preventDefault();

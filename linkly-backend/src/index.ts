@@ -13,6 +13,7 @@ import webhookRoutes from './routes/webhook.routes';
 import apiKeyRoutes from './routes/apiKey.routes';
 import publicRoutes from './routes/public.routes';
 import { errorHandler } from './middleware/error.middleware';
+import aiRoutes from './routes/ai.routes';
 
 dotenv.config();
 
@@ -50,6 +51,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/keys', apiKeyRoutes);
 app.use('/api/public', publicRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Redirect route (MUST be last)
 app.use('/', redirectRoutes);
