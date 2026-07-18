@@ -15,5 +15,5 @@
       "@/*": ["*"]
     }
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*", "../linkly-frontend/src/components/EditLinkModal.tsx"]
 }
