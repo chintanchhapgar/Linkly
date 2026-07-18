@@ -12,6 +12,7 @@ import ProtectedLink from './pages/ProtectedLink';
 import ProfilePage from './pages/Profile';  // ← NEW
 import Pricing from './pages/Pricing';
 import Billing from './pages/Billing';
+import ApiKeysPage from './pages/ApiKeys';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -80,6 +81,15 @@ export default function App() {
             element={
               <PrivateRoute>
                 <Billing />
+              </PrivateRoute>
+            }
+          />
+
+          <Route
+            path="/api-keys"
+            element={
+              <PrivateRoute>
+                <ApiKeysPage />
               </PrivateRoute>
             }
           />

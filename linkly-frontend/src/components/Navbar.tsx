@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Link2, LogOut, User, CreditCard } from 'lucide-react';
 import { useAuth } from '../store/auth';
+import { Key } from 'lucide-react';
 
 export default function Navbar() {
   const navigate = useNavigate();
@@ -28,6 +29,15 @@ export default function Navbar() {
           >
             Pricing
           </Link>
+
+          <Link
+            to="/api-keys"
+            className="p-2 text-slate-400 hover:text-white hover:bg-cyber-hover rounded-lg transition"
+            title="API Keys"
+          >
+            <Key className="w-5 h-5" />
+          </Link>
+
           <Link
             to="/billing"
             className="p-2 text-slate-400 hover:text-white hover:bg-cyber-hover rounded-lg transition"

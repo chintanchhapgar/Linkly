@@ -24,6 +24,7 @@ model User {
   updatedAt              DateTime @updatedAt
 
   links Link[]
+  apiKeys ApiKey[]
 
   @@map("users")
 }
@@ -75,4 +76,19 @@ enum Plan {
   FREE
   PRO
   BUSINESS
+}
+
+model ApiKey {
+  id        String   @id @default(cuid())
+  name      String
+  keyHash   String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  isActive  Boolean  @default(true)
+  lastUsed  DateTime?
+  usageCount Int     @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("api_keys")
 }
