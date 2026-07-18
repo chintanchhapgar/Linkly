@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import UAParser from 'ua-parser-js';
+import { UAParser } from 'ua-parser-js';
 import geoip from 'geoip-lite';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';

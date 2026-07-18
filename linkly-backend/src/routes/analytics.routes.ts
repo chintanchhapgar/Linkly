@@ -8,7 +8,7 @@ const router = Router();
 router.get('/:linkId', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const link = await prisma.link.findFirst({
-      where: { id: req.params.linkId, userId: req.userId },
+      where: { id: req.params.linkId as string, userId: req.userId },
     });
     if (!link) return res.status(404).json({ error: 'Not found' });
 

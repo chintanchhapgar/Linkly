@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
 import bcrypt from 'bcryptjs';
-import UAParser from 'ua-parser-js';
+import { UAParser } from 'ua-parser-js';
 import geoip from 'geoip-lite';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
@@ -206,7 +206,7 @@ router.get('/', authenticate, async (req: AuthRequest, res, next) => {
 router.get('/:id', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const link = await prisma.link.findFirst({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
     });
     if (!link) return res.status(404).json({ error: 'Not found' });
 
@@ -227,7 +227,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res, next) => {
     const data = updateSchema.parse(req.body);
 
     const existing = await prisma.link.findFirst({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
     });
     if (!existing) return res.status(404).json({ error: 'Not found' });
 
@@ -248,7 +248,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res, next) => {
     }
 
     const updated = await prisma.link.update({
-      where: { id: req.params.id },
+      where: { id: req.params.id as string },
       data: updateData,
     });
 
@@ -279,7 +279,7 @@ router.put('/:id', authenticate, async (req: AuthRequest, res, next) => {
 router.delete('/:id', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const link = await prisma.link.findFirst({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
     });
     if (!link) return res.status(404).json({ error: 'Not found' });
 

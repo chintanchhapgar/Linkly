@@ -119,7 +119,7 @@ router.get('/links', authenticateApiKey, async (req: ApiKeyRequest, res, next) =
 router.get('/links/:code', authenticateApiKey, async (req: ApiKeyRequest, res, next) => {
   try {
     const link = await prisma.link.findUnique({
-      where: { shortCode: req.params.code },
+      where: { shortCode: req.params.code as string },
       select: {
         id: true,
         shortCode: true,
@@ -149,7 +149,7 @@ router.get('/links/:code', authenticateApiKey, async (req: ApiKeyRequest, res, n
 router.delete('/links/:code', authenticateApiKey, async (req: ApiKeyRequest, res, next) => {
   try {
     const link = await prisma.link.findUnique({
-      where: { shortCode: req.params.code },
+      where: { shortCode: req.params.code as string },
     });
 
     if (!link) return res.status(404).json({ error: 'Not found' });

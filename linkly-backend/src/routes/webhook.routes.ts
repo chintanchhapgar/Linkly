@@ -74,7 +74,7 @@ router.post(
               stripeSubscriptionId: subscription.id,
               stripePriceId: priceId,
               stripeCurrentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
+                (subscription as any).current_period_end * 1000
               ),
             },
           });
@@ -106,7 +106,7 @@ router.post(
               plan,
               stripePriceId: priceId,
               stripeCurrentPeriodEnd: new Date(
-                subscription.current_period_end * 1000
+                (subscription as any).current_period_end * 1000
               ),
             },
           });

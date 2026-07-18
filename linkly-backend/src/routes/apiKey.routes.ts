@@ -81,7 +81,7 @@ router.post('/', authenticate, async (req: AuthRequest, res, next) => {
 router.delete('/:id', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const key = await prisma.apiKey.findFirst({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
     });
     if (!key) return res.status(404).json({ error: 'Not found' });
 
@@ -97,7 +97,7 @@ router.delete('/:id', authenticate, async (req: AuthRequest, res, next) => {
 router.patch('/:id/toggle', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const key = await prisma.apiKey.findFirst({
-      where: { id: req.params.id, userId: req.userId },
+      where: { id: req.params.id as string, userId: req.userId },
     });
     if (!key) return res.status(404).json({ error: 'Not found' });
 
