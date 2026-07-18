@@ -419,7 +419,7 @@ export default function Dashboard() {
 }
 
 // Highlight matching text in search results
-function highlightMatch(text: string, search: string): JSX.Element | string {
+function highlightMatch(text: string, search: string) {
   if (!search || !text) return text;
 
   const regex = new RegExp(

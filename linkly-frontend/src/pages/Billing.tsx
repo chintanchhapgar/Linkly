@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import { useSearchParams,  Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  CreditCard, Award, Check, Loader2, ExternalLink,
+   Award, Check, Loader2, ExternalLink,
   Calendar, TrendingUp, Zap,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -10,7 +10,6 @@ import { api } from '../lib/api';
 import Navbar from '../components/Navbar';
 
 export default function Billing() {
-  const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
 

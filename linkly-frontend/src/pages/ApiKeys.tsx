@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Key, Plus, Copy, Trash2, Power, Loader2, Check,
-  AlertCircle, Eye, EyeOff, Code2, Book, Zap, Shield,
+  AlertCircle,  Code2, Book,  Shield,
   Terminal, Activity, ExternalLink,
 } from 'lucide-react';
 import { toast } from 'sonner';
