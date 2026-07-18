@@ -1,11 +1,12 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Link2, LogOut, User, CreditCard } from 'lucide-react';
+import { Link2, LogOut, User, CreditCard, Key } from 'lucide-react';
 import { useAuth } from '../store/auth';
-import { Key } from 'lucide-react';
+import { useSocketStatus } from '../hooks/useRealtime';
 
 export default function Navbar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const isConnected = useSocketStatus();
 
   const handleLogout = () => {
     logout();
@@ -20,6 +21,14 @@ export default function Navbar() {
             <Link2 className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold">Linkly</span>
+          
+          {/* Real-time indicator */}
+          <div className="hidden md:flex items-center gap-1.5 ml-3 px-2 py-1 bg-cyber-hover rounded-full border border-cyber-border">
+            <div className={`w-1.5 h-1.5 rounded-full ${isConnected ? 'bg-green-400 animate-pulse' : 'bg-red-400'}`}></div>
+            <span className="text-xs text-slate-400 font-mono">
+              {isConnected ? 'LIVE' : 'OFFLINE'}
+            </span>
+          </div>
         </Link>
 
         <div className="flex items-center gap-2">
@@ -29,7 +38,6 @@ export default function Navbar() {
           >
             Pricing
           </Link>
-
           <Link
             to="/api-keys"
             className="p-2 text-slate-400 hover:text-white hover:bg-cyber-hover rounded-lg transition"
@@ -37,7 +45,6 @@ export default function Navbar() {
           >
             <Key className="w-5 h-5" />
           </Link>
-
           <Link
             to="/billing"
             className="p-2 text-slate-400 hover:text-white hover:bg-cyber-hover rounded-lg transition"

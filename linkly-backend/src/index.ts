@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
 
 import authRoutes from './routes/auth.routes';
 import linkRoutes from './routes/link.routes';
@@ -12,15 +14,44 @@ import subscriptionRoutes from './routes/subscription.routes';
 import webhookRoutes from './routes/webhook.routes';
 import apiKeyRoutes from './routes/apiKey.routes';
 import publicRoutes from './routes/public.routes';
-import { errorHandler } from './middleware/error.middleware';
 import aiRoutes from './routes/ai.routes';
+import { errorHandler } from './middleware/error.middleware';
 
 dotenv.config();
 
 const app = express();
+const httpServer = createServer(app);
+
+// Setup Socket.io
+export const io = new Server(httpServer, {
+  cors: {
+    origin: '*',
+    methods: ['GET', 'POST'],
+    credentials: true,
+  },
+});
+
+// Track connected clients
+io.on('connection', (socket) => {
+  console.log(`⚡ Client connected: ${socket.id}`);
+  
+  socket.on('join-user-room', (userId: string) => {
+    socket.join(`user-${userId}`);
+    console.log(`📡 Socket ${socket.id} joined room: user-${userId}`);
+  });
+
+  socket.on('join-link-room', (linkId: string) => {
+    socket.join(`link-${linkId}`);
+    console.log(`📡 Socket ${socket.id} watching link: ${linkId}`);
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`👋 Client disconnected: ${socket.id}`);
+  });
+});
+
 const PORT = Number(process.env.PORT) || 5001;
 
-// ✅ Updated CORS with all methods
 app.use(cors({
   origin: '*',
   credentials: true,
@@ -36,7 +67,7 @@ app.use('/api/webhook', webhookRoutes);
 app.use(express.json());
 
 app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+  res.json({ status: 'ok', connections: io.engine.clientsCount });
 });
 
 app.get('/', (_req, res) => {
@@ -58,6 +89,7 @@ app.use('/', redirectRoutes);
 
 app.use(errorHandler);
 
-app.listen(PORT, '0.0.0.0', () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server running on port ${PORT}`);
+  console.log(`⚡ WebSocket enabled`);
 });

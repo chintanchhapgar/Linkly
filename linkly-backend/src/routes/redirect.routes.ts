@@ -1,17 +1,17 @@
 import { Router } from 'express';
-import { UAParser } from 'ua-parser-js';
+import UAParser from 'ua-parser-js';
 import geoip from 'geoip-lite';
 import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
+import { io } from '../index';  // ← Import io
 
 const router = Router();
 
 router.get('/:code', async (req, res) => {
   try {
     const { code } = req.params;
-    
-    console.log(`🔗 Redirect request for: ${code}`);
+    console.log(`🔗 Redirect: ${code}`);
 
     const reserved = ['api', 'health', 'favicon.ico'];
     if (reserved.includes(code)) {
@@ -67,23 +67,19 @@ router.get('/:code', async (req, res) => {
       );
     }
 
-    // Check disabled
     if (!isActive) {
       return res.status(410).send(renderErrorPage('Link Disabled', 'This link has been disabled by the owner.'));
     }
 
-    // Check expired
     if (expiresAt && expiresAt < new Date()) {
-      return res.status(410).send(renderErrorPage('Link Expired', 'This link has expired and is no longer active.'));
+      return res.status(410).send(renderErrorPage('Link Expired', 'This link has expired.'));
     }
 
-    // ✨ Check password protection
     if (hasPassword) {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
       return res.redirect(`${frontendUrl}/protected/${code}`);
     }
 
-    // Track click
     if (linkId) {
       trackClick(linkId, req).catch(console.error);
     }
@@ -99,35 +95,60 @@ async function trackClick(linkId: string, req: any) {
   try {
     const userAgent = req.headers['user-agent'] || '';
     const ua = new UAParser(userAgent);
-    
+
     const ip = (
       req.headers['x-forwarded-for'] ||
       req.socket.remoteAddress ||
       '127.0.0.1'
     ) as string;
-    
+
     const cleanIp = ip.split(',')[0].trim().replace('::ffff:', '');
     const geo = geoip.lookup(cleanIp);
     const ipHash = crypto.createHash('sha256').update(cleanIp).digest('hex');
 
-    await prisma.clickEvent.create({
-      data: {
-        linkId,
-        ipHash,
-        country: geo?.country || 'Unknown',
-        city: geo?.city || 'Unknown',
-        device: ua.getDevice().type || 'desktop',
-        browser: ua.getBrowser().name || 'Unknown',
-        os: ua.getOS().name || 'Unknown',
-        referrer: req.headers.referer || null,
-        userAgent: userAgent,
-      },
-    });
+    const clickData = {
+      linkId,
+      ipHash,
+      country: geo?.country || 'Unknown',
+      city: geo?.city || 'Unknown',
+      device: ua.getDevice().type || 'desktop',
+      browser: ua.getBrowser().name || 'Unknown',
+      os: ua.getOS().name || 'Unknown',
+      referrer: req.headers.referer || null,
+      userAgent: userAgent,
+    };
 
-    await prisma.link.update({
+    // Save to DB
+    await prisma.clickEvent.create({ data: clickData });
+
+    const updated = await prisma.link.update({
       where: { id: linkId },
       data: { clicks: { increment: 1 } },
+      include: { user: true },
     });
+
+    console.log(`✅ Click tracked for ${linkId}, total: ${updated.clicks}`);
+
+    // 🔥 Emit real-time events
+    const eventData = {
+      linkId,
+      shortCode: updated.shortCode,
+      totalClicks: updated.clicks,
+      country: clickData.country,
+      city: clickData.city,
+      device: clickData.device,
+      browser: clickData.browser,
+      timestamp: new Date().toISOString(),
+    };
+
+    // Emit to user's room (updates dashboard)
+    io.to(`user-${updated.userId}`).emit('new-click', eventData);
+    console.log(`📡 Emitted to user-${updated.userId}`);
+
+    // Emit to link's room (updates analytics page)
+    io.to(`link-${linkId}`).emit('link-click', eventData);
+    console.log(`📡 Emitted to link-${linkId}`);
+
   } catch (error) {
     console.error('❌ Track click error:', error);
   }
@@ -164,7 +185,6 @@ function renderErrorPage(title: string, message: string): string {
       border: 1px solid #27272f;
       border-radius: 16px;
       padding: 3rem 2rem;
-      box-shadow: 0 20px 60px rgba(168, 85, 247, 0.1);
     }
     .icon { font-size: 4rem; margin-bottom: 1rem; }
     h1 {

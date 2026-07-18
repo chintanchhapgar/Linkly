@@ -15,6 +15,8 @@ import LinkFilters from '../components/LinkFilters';
 import type { StatusFilter, SortOption } from '../components/LinkFilters';
 import { useDebounce } from '../hooks/useDebounce';
 import { Sparkles } from 'lucide-react'; // Add Sparkles
+import { useRealtimeDashboard } from '../hooks/useRealtime';
+import LiveClickFeed from '../components/LiveClickFeed';
 
 interface LinkData {
   id: string;
@@ -32,6 +34,10 @@ interface LinkData {
 export default function Dashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+
+  // ✨ Add this line to enable real-time!
+  useRealtimeDashboard();
+
   const [showQR, setShowQR] = useState<string | null>(null);
   const [editingLink, setEditingLink] = useState<LinkData | null>(null);
   const [showCreatePassword, setShowCreatePassword] = useState(false);
@@ -191,6 +197,10 @@ const handleAiMagic = async () => {
               <div className="text-4xl font-bold gradient-text">{stat.value}</div>
             </div>
           ))}
+        </div>
+
+        <div className="mb-8">
+          <LiveClickFeed />
         </div>
 
         {/* Create Link Form */}

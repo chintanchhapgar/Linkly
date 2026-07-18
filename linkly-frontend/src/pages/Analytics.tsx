@@ -7,6 +7,7 @@ import {
 import { ArrowLeft, Loader2, Globe, Smartphone, Monitor } from 'lucide-react';
 import { api } from '../lib/api';
 import Navbar from '../components/Navbar';
+import { useRealtimeLink } from '../hooks/useRealtime';
 
 const COLORS = ['#a855f7', '#06b6d4', '#ec4899', '#f59e0b', '#10b981'];
 
@@ -14,6 +15,9 @@ export default function Analytics() {
   const { id } = useParams();
   const navigate = useNavigate();
 
+   // ✨ Add this line for real-time updates!
+  useRealtimeLink(id);
+  
   const { data, isLoading } = useQuery({
     queryKey: ['analytics', id],
     queryFn: async () => (await api.get(`/api/analytics/${id}`)).data,
