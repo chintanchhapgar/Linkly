@@ -8,13 +8,20 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  name      String?
-  plan      Plan     @default(FREE)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                     String   @id @default(cuid())
+  email                  String   @unique
+  password               String
+  name                   String?
+  plan                   Plan     @default(FREE)
+  
+  // Stripe fields
+  stripeCustomerId       String?  @unique
+  stripeSubscriptionId   String?  @unique
+  stripePriceId          String?
+  stripeCurrentPeriodEnd DateTime?
+  
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 
   links Link[]
 

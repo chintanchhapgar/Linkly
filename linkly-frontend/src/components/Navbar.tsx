@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Link2, LogOut, User, Settings } from 'lucide-react';
+import { Link2, LogOut, User, CreditCard } from 'lucide-react';
 import { useAuth } from '../store/auth';
 
 export default function Navbar() {
@@ -22,6 +22,19 @@ export default function Navbar() {
         </Link>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/pricing"
+            className="px-3 py-2 text-slate-300 hover:text-white text-sm font-medium hidden md:block"
+          >
+            Pricing
+          </Link>
+          <Link
+            to="/billing"
+            className="p-2 text-slate-400 hover:text-white hover:bg-cyber-hover rounded-lg transition"
+            title="Billing"
+          >
+            <CreditCard className="w-5 h-5" />
+          </Link>
           <Link
             to="/profile"
             className="flex items-center gap-2 px-3 py-2 hover:bg-cyber-hover rounded-lg transition"

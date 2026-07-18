@@ -8,6 +8,7 @@ import crypto from 'crypto';
 import { prisma } from '../lib/prisma';
 import { redis } from '../lib/redis';
 import { authenticate, AuthRequest } from '../middleware/auth.middleware';
+import { PLAN_LIMITS } from '../lib/plans';
 
 const router = Router();
 
@@ -75,10 +76,32 @@ async function trackClick(linkId: string, req: any) {
   }
 }
 
-// Create link
+// Update the create link endpoint:
 router.post('/', authenticate, async (req: AuthRequest, res, next) => {
   try {
     const data = createSchema.parse(req.body);
+
+    // ✨ Check plan limits
+    const user = await prisma.user.findUnique({
+      where: { id: req.userId },
+      select: { plan: true },
+    });
+
+    const planInfo = PLAN_LIMITS[user!.plan as keyof typeof PLAN_LIMITS];
+    
+    if (planInfo.maxLinks !== -1) {
+      const linkCount = await prisma.link.count({
+        where: { userId: req.userId },
+      });
+
+      if (linkCount >= planInfo.maxLinks) {
+        return res.status(403).json({
+          error: `You've reached the ${planInfo.name} plan limit of ${planInfo.maxLinks} links. Upgrade to create more.`,
+          upgrade: true,
+        });
+      }
+    }
+
     const shortCode = data.customCode || nanoid(7);
 
     const existing = await prisma.link.findUnique({ where: { shortCode } });

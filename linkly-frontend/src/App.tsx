@@ -10,6 +10,8 @@ import Dashboard from './pages/Dashboard';
 import Analytics from './pages/Analytics';
 import ProtectedLink from './pages/ProtectedLink';
 import ProfilePage from './pages/Profile';  // ← NEW
+import Pricing from './pages/Pricing';
+import Billing from './pages/Billing';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -71,7 +73,18 @@ export default function App() {
               </PrivateRoute>
             }
           />
+
+          <Route path="/pricing" element={<Pricing />} />
+          <Route
+            path="/billing"
+            element={
+              <PrivateRoute>
+                <Billing />
+              </PrivateRoute>
+            }
+          />
         </Routes>
+        
       </BrowserRouter>
     </QueryClientProvider>
   );
