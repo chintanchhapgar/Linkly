@@ -2,7 +2,7 @@
 
 # 🔗 Linkly
 
-### Modern URL Shortener SaaS Built for Developers
+### URL Shortening SaaS with Real-time Analytics & Public API
 
 [![Live Demo](https://img.shields.io/badge/Live_Demo-Visit_Site-a855f7?style=for-the-badge)](https://linkly-mu.vercel.app)
 [![API](https://img.shields.io/badge/API-Documentation-06b6d4?style=for-the-badge)](https://linkly-api-313v.onrender.com)
@@ -10,7 +10,7 @@
 
 **Transform long URLs into powerful branded links with real-time analytics, custom slugs, and lightning-fast redirects.**
 
-[Live Demo](https://linkly-mu.vercel.app) • [API Docs](https://linkly-mu.vercel.app/api-keys) • [Report Bug](https://github.com/chintanchhapgar/Linkly/issues)
+[Live Demo](https://linkly-mu.vercel.app) • [API Docs](https://linkly-mu.vercel.app/api-keys) 
 
 ![Linkly Preview](./docs/screenshots/screenshot-hero.png)
 
