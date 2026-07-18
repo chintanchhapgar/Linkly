@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom';
 import {
   Link2, Zap, BarChart3, Shield, ArrowRight, Check,
   Sparkles, Code2, Globe, Copy, MousePointer2,
-  Smartphone, Laptop, TrendingUp,
+  TrendingUp,
 } from 'lucide-react';
 
 export default function Landing() {
